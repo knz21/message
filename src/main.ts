@@ -79,15 +79,17 @@ const prepareMessages = () => {
             Logger.log('regular message prepared')
             return [trigger.getUniqueId(), channelId, botName, text, date]
         }
-        const updateTimes = (index: number, day?, hour?, minute?, times?, skip?, skipPeriod?, channel?, bot?, user?, group?, message?) => {
-            if (times != '' && times > 0) {
-                const newRow = [day, hour, minute, times - 1, skip, skipPeriod, channel, bot, user, group, message]
+        const updateIfNeeded = (index: number, day?, hour?, minute?, times?, skip?, skipPeriod?, channel?, bot?, user?, group?, message?) => {
+            const newTimes = times != '' && times > 0 ? times - 1 : times
+            const newSkip = typeOf(skipPeriod) == 'number' && skipPeriod > 0 ? skipPeriod : skip
+            if (newTimes != times || newSkip != skip) {
+                const newRow = [day, hour, minute, newTimes, newSkip, skipPeriod, channel, bot, user, group, message]
                 regularSheet.getRange(index + 2, 1, 1, newRow.length).setValues([newRow])
             }
         }
-        const updateSkips = (index: number, day?, hour?, minute?, times?, skip?, skipPeriod?, channel?, bot?, user?, group?, message?) => {
+        const updateSkip = (index: number, day?, hour?, minute?, times?, skip?, skipPeriod?, channel?, bot?, user?, group?, message?) => {
             const newSkip = skip - 1
-            const newRow = [day, hour, minute, times, newSkip == 0 ? skipPeriod : newSkip, skipPeriod, channel, bot, user, group, message]
+            const newRow = [day, hour, minute, times, newSkip, skipPeriod, channel, bot, user, group, message]
             regularSheet.getRange(index + 2, 1, 1, newRow.length).setValues([newRow])
         }
 
@@ -106,10 +108,10 @@ const prepareMessages = () => {
                     const preparingMessage: any[] = prepare(...row)
                     if (preparingMessage != null) {
                         preparingMessages.push(preparingMessage)
-                        updateTimes(index, ...row)
+                        updateIfNeeded(index, ...row)
                     }
                 } else {
-                    updateSkips(index, ...row)
+                    updateSkip(index, ...row)
                 }
             }
         })
