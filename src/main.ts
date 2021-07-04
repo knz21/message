@@ -157,15 +157,17 @@ const prepareMessages = () => {
             return
         }
         const singleMessages = singleSheet.getRange(2, 1, lastRowNumber - 1, singleSheet.getLastColumn()).getValues()
+        const preparedIndices = []
         singleMessages.forEach((row: any[], index: number) => {
             if (isToday(...row) && isValidRow(...row)) {
                 const preparingMessage: any[] = prepare(...row)
                 if (preparingMessages != null) {
                     preparingMessages.push(preparingMessage)
-                    deleteRow(index)
+                    preparedIndices.push(index)
                 }
             }
         })
+        preparedIndices.reverse().forEach(index => deleteRow(index))
     }
 
     try {
