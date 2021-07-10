@@ -1,5 +1,9 @@
 const messageSheets = SpreadsheetApp.openById('12Lduw8zGSu45YByeQy0fTLx2PKzaJ6NyOoZFkYtlbqA')
 
+const createEverydayTrigger = () => {
+    ScriptApp.newTrigger('prepareMessages').timeBased().nearMinute(0).everyDays(1).atHour(0).create()
+}
+
 const prepareMessages = () => {
     const holidaysSheet = SpreadsheetApp.openById('1dD14Up7ialGPRQmTb74zgxbctB9CaUsYa41aVIHxfJ4').getSheetByName('public holiday')
     const holidays = holidaysSheet.getRange(1, 1, holidaysSheet.getLastRow()).getValues().map(row => row[0])
