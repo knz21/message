@@ -1,4 +1,5 @@
 const messageSheets = SpreadsheetApp.openById('12Lduw8zGSu45YByeQy0fTLx2PKzaJ6NyOoZFkYtlbqA')
+const senderEndpoint: string = PropertiesService.getScriptProperties().getProperty('sender_endpoint')
 
 const createEverydayTrigger = () => {
     ScriptApp.newTrigger('prepareMessages').timeBased().nearMinute(0).everyDays(1).atHour(0).create()
@@ -24,6 +25,28 @@ const prepareMessages = () => {
             channelId: channelId,
             botName: botName,
             text: text,
+        }
+    }
+
+    const createSenderTrigger = (date: Date): string => {
+        const options: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
+            method: 'post',
+            headers: {
+                Authorization: `Bearer ${ScriptApp.getOAuthToken()}`
+            },
+            payload: {
+                timestamp: date.getTime()
+            },
+            muteHttpExceptions: true
+        }
+        Logger.log(options)
+        const contentText = UrlFetchApp.fetch(senderEndpoint, options).getContentText()
+        try {
+            const response = JSON.parse(contentText)
+            return response.triggerUid
+        } catch {
+            Logger.log(contentText)
+            return null
         }
     }
 
@@ -79,9 +102,13 @@ const prepareMessages = () => {
             const date = new Date()
             date.setHours(hour)
             date.setMinutes(minute)
-            const trigger = ScriptApp.newTrigger('sendMessage').timeBased().at(date).create()
+            const triggerUid = createSenderTrigger(date)
+            if (!triggerUid) {
+                Logger.log('create sender trigger failed')
+                return null
+            }
             Logger.log('regular message prepared')
-            return [trigger.getUniqueId(), channelId, botName, text, date]
+            return [triggerUid, channelId, botName, text, date]
         }
         const updateIfNeeded = (index: number, day?, hour?, minute?, times?, skip?, skipPeriod?, channel?, bot?, user?, group?, message?) => {
             const newTimes = times != '' && times > 0 ? times - 1 : times
@@ -145,9 +172,13 @@ const prepareMessages = () => {
             }
             date.setHours(hour)
             date.setMinutes(minute)
-            const trigger = ScriptApp.newTrigger('sendMessage').timeBased().at(date).create()
+            const triggerUid = createSenderTrigger(date)
+            if (!triggerUid) {
+                Logger.log('create sender trigger failed')
+                return null
+            }
             Logger.log('single message prepared')
-            return [trigger.getUniqueId(), channelId, botName, text, date]
+            return [triggerUid, channelId, botName, text, date]
         }
         const deleteRow = (index: number) => {
             singleSheet.deleteRow(index + 2)
@@ -165,7 +196,7 @@ const prepareMessages = () => {
         singleMessages.forEach((row: any[], index: number) => {
             if (isToday(...row) && isValidRow(...row)) {
                 const preparingMessage: any[] = prepare(...row)
-                if (preparingMessages != null) {
+                if (preparingMessage != null) {
                     preparingMessages.push(preparingMessage)
                     preparedIndices.push(index)
                 }
@@ -212,46 +243,6 @@ const isValidMessage = (hour, minute, channel, bot, message): boolean => {
         return false
     }
     return true
-}
-
-const sendMessage = (e: object) => {
-    const triggerUid: string = e['triggerUid']
-    const sheet = messageSheets.getSheetByName('prepared')
-    const lastRowNumber = sheet.getLastRow()
-    if (lastRowNumber == 0) return
-    const messages: string[][] = sheet.getRange(1, 1, lastRowNumber, sheet.getLastColumn()).getDisplayValues()
-    const message: string[] = messages.find(message => message[0] == triggerUid)
-    const channelId: string = message[1]
-    const botName: string = message[2]
-    const text: string = message[3]
-    if (channelId.length == 0 || text.length == 0) return
-    const token = PropertiesService.getScriptProperties().getProperty(`slack_${botName}_token`)
-    const formData = {
-        token: token,
-        channel: channelId,
-        text: text
-    }
-    const options: GoogleAppsScript.URL_Fetch.URLFetchRequestOptions = {
-        method: 'post',
-        payload: formData,
-        muteHttpExceptions: true
-    }
-    Logger.log(UrlFetchApp.fetch('https://slack.com/api/chat.postMessage', options).getContentText())
-
-    const index = messages.findIndex(message => message[0] == triggerUid)
-    if (index >= 0) {
-        sheet.deleteRow(index + 1)
-        sheet.insertRowAfter(Math.max(sheet.getLastRow(), 1))
-    }
-    ScriptApp.getProjectTriggers().forEach(trigger => {
-        if (trigger.getUniqueId() == triggerUid) {
-            ScriptApp.deleteTrigger(trigger)
-        }
-    });
-}
-
-const setToken = () => {
-    PropertiesService.getScriptProperties().setProperty('', '')
 }
 
 const typeOf = (obj: any): string => Object.prototype.toString.call(obj).slice(8, -1).toLowerCase()
