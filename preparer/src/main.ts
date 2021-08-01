@@ -2,7 +2,7 @@ const messageSheets = SpreadsheetApp.openById('12Lduw8zGSu45YByeQy0fTLx2PKzaJ6Ny
 const senderEndpoint: string = PropertiesService.getScriptProperties().getProperty('sender_endpoint')
 
 const createEverydayTrigger = () => {
-    ScriptApp.newTrigger('prepareMessages').timeBased().nearMinute(0).everyDays(1).atHour(0).create()
+    ScriptApp.newTrigger('prepareMessages').timeBased().nearMinute(1).everyDays(1).atHour(0).create()
 }
 
 const prepareMessages = () => {
